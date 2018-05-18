@@ -1,17 +1,10 @@
 #include <iostream>
 #include <vector>
 #include <array>
+#include <chrono>
 
 /**
  * Do winograd
- * 
- * G = 
- * {1, 0, 0, \
- * 0.5, 0.5, 0.5, \
- * 0.5, -0.5, 0.5, \
- * 0, 0, 1};
- * 
- * BT = 
  */
 
 constexpr std::array<std::array<float, 3>, 4> G = \
@@ -72,8 +65,6 @@ std::array<std::array<float, 4>, 4> doGgGT(std::array<std::array<float, 3>, 3> &
             tmp[m][n] = val;
         }
     }
-
-
     std::array<std::array<float, 4>, 4> ret;
     K = 3, M = 4, N = 4;
     for(size_t m = 0; m < M; m++) {
@@ -88,6 +79,8 @@ std::array<std::array<float, 4>, 4> doGgGT(std::array<std::array<float, 3>, 3> &
     return ret;
 }
 
+
+
 std::array<std::array<float, 4>, 4> doBTdB(std::array<std::array<float, 4>, 4> &d) {
     std::array<std::array<float, 4>, 4> tmp;
     size_t K = 4, M = 4, N = 4;
@@ -100,7 +93,6 @@ std::array<std::array<float, 4>, 4> doBTdB(std::array<std::array<float, 4>, 4> &
             tmp[m][n] = val;
         }
     }
-    
     std::array<std::array<float, 4>, 4> ret;
     for(size_t m = 0; m < M; m++) {
         for(size_t n = 0; n < N; n++) {
@@ -114,7 +106,7 @@ std::array<std::array<float, 4>, 4> doBTdB(std::array<std::array<float, 4>, 4> &
     return ret;
 }
 
-std::array<std::array<float, 4>, 4> doElementMul(std::array<std::array<float, 4>, 4> &g, std::array<std::array<float, 4>, 4> &d) {
+std::array<std::array<float, 4>, 4> doElementMul(std::array<std::array<float, 4>, 4> g, std::array<std::array<float, 4>, 4> d) {
     std::array<std::array<float, 4>, 4> ret;
     size_t M = 4, N = 4;
     for(size_t m = 0; m < M; m++) {
@@ -125,7 +117,7 @@ std::array<std::array<float, 4>, 4> doElementMul(std::array<std::array<float, 4>
     return ret;
 }
 
-std::array<std::array<float, 2>, 2> doATaA(std::array<std::array<float, 4>, 4> &a) {
+std::array<std::array<float, 2>, 2> doATaA(std::array<std::array<float, 4>, 4> a) {
     std::array<std::array<float, 4>, 2> tmp;
     size_t K = 4, M = 2, N = 4;
     for(size_t m = 0; m < M; m++) {
@@ -137,7 +129,6 @@ std::array<std::array<float, 2>, 2> doATaA(std::array<std::array<float, 4>, 4> &
             tmp[m][n] = val;
         }
     }
-
     std::array<std::array<float, 2>, 2> ret;
     K = 4, M = 2, N = 2;
     for(size_t m = 0; m < M; m++) {
@@ -153,5 +144,33 @@ std::array<std::array<float, 2>, 2> doATaA(std::array<std::array<float, 4>, 4> &
 }
 
 int main() {
+    std::vector<std::array<std::array<float, 4>, 4> > image(1024);
+    std::array<std::array<float, 3>, 3> filter;
+    std::vector<std::array<std::array<float, 2>, 2> > rets(1024);
 
+    for(size_t i=0;i<1024;i++) {
+    for(size_t m=0;m<4;m++) {
+        for(size_t n=0;n<4;n++) {
+            image[i][m][n] = (m+1)*1.0f;
+        }
+    }
+    }
+    for(size_t m=0;m<3;m++) {
+        for(size_t n=0;n<3;n++) {
+            filter[m][n] = 1.0f;
+        }
+    }
+    auto start = std::chrono::high_resolution_clock::now();
+    for(size_t i=0;i<1024;i++) {
+        rets[i] = doATaA(doElementMul(doGgGT(filter), doBTdB(image[i])));
+    }
+    auto stop = std::chrono::high_resolution_clock::now();
+    double elapsedSec = std::chrono::duration_cast<std::chrono::duration<double>>(stop - start).count();
+    std::cout<< elapsedSec <<std::endl;
+    for(size_t m=0;m<2;m++) {
+        for(size_t n=0;n<2;n++) {
+            std::cout<<rets[0][m][n]<<" ";
+        }
+        std::cout<<std::endl;
+    }
 }
